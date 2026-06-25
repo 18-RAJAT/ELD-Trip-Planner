@@ -19,5 +19,7 @@ services:
         sync: false
       - key: DJANGO_CORS_ALLOWED_ORIGIN_REGEXES
         value: "^https://.*\\.vercel\\.app$"
+      - key: GEOCODER_PROVIDER
+        value: "photon"
       - key: GEOCODER_USER_AGENT
         value: "eld-trip-planner/1.0 (deployment)"

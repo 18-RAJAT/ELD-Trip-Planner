@@ -46,32 +46,79 @@ def _is_vague_location(query):
     return False
 
 
-def _request_search(query, limit):
+def _allowed_countries():
+    codes = settings.GEOCODER_COUNTRY_CODES
+    if not codes:
+        return set()
+    return {code.strip().lower() for code in codes.split(",") if code.strip()}
+
+
+def _search_nominatim(query, limit):
     url = f"{settings.NOMINATIM_BASE_URL}/search"
     params = {"q": query, "format": "json", "limit": limit, "addressdetails": 1}
-    if settings.GEOCODER_COUNTRY_CODES:
-        params["countrycodes"] = settings.GEOCODER_COUNTRY_CODES
+    codes = settings.GEOCODER_COUNTRY_CODES
+    if codes:
+        params["countrycodes"] = codes
     headers = {"User-Agent": settings.GEOCODER_USER_AGENT}
-    try:
-        response = requests.get(url, params=params, headers=headers, timeout=15)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise GeocodingError("Unable to reach the geocoding service.") from exc
-    return response.json()
-
-
-def search_locations(query, limit=5):
-    if not query or len(query.strip()) < 2:
-        return []
-    results = _request_search(query.strip(), limit)
+    response = requests.get(url, params=params, headers=headers, timeout=15)
+    response.raise_for_status()
     return [
         {
             "label": item.get("display_name", query),
             "lat": float(item["lat"]),
             "lng": float(item["lon"]),
         }
-        for item in results
+        for item in response.json()
     ]
+
+
+def _photon_label(properties, fallback):
+    parts = []
+    for key in ("name", "city", "county", "state", "country"):
+        value = properties.get(key)
+        if value and value not in parts:
+            parts.append(value)
+    return ", ".join(parts) if parts else fallback
+
+
+def _search_photon(query, limit):
+    url = f"{settings.PHOTON_BASE_URL}/api/"
+    params = {"q": query, "limit": limit, "lang": "en"}
+    headers = {"User-Agent": settings.GEOCODER_USER_AGENT}
+    response = requests.get(url, params=params, headers=headers, timeout=15)
+    response.raise_for_status()
+    allowed = _allowed_countries()
+    results = []
+    for feature in response.json().get("features", []):
+        properties = feature.get("properties", {})
+        if allowed and properties.get("countrycode", "").lower() not in allowed:
+            continue
+        coordinates = feature.get("geometry", {}).get("coordinates")
+        if not coordinates:
+            continue
+        results.append(
+            {
+                "label": _photon_label(properties, query),
+                "lat": float(coordinates[1]),
+                "lng": float(coordinates[0]),
+            }
+        )
+    return results
+
+
+def _provider_search(query, limit):
+    try:
+        if settings.GEOCODER_PROVIDER == "nominatim":
+            return _search_nominatim(query, limit)
+        return _search_photon(query, limit)
+    except requests.RequestException as exc:
+        raise GeocodingError("Unable to reach the geocoding service.") from exc
+
+
+def search_locations(query, limit=5):
+    if not query or len(query.strip()) < 2:
+        return []
+    return _provider_search(query.strip(), limit)
 
 
 def geocode(query):
@@ -79,17 +126,12 @@ def geocode(query):
         raise GeocodingError(
             f"'{query}' is too vague. Use a specific city and state, such as Dallas, TX, USA."
         )
-    results = _request_search(query, 1)
+    results = _provider_search(query, 1)
     if not results:
         raise GeocodingError(
             f"Could not find a US location for '{query}'. Try City, ST, USA."
         )
-    top = results[0]
-    return {
-        "label": top.get("display_name", query),
-        "lat": float(top["lat"]),
-        "lng": float(top["lon"]),
-    }
+    return results[0]
 
 
 def resolve_location(location):

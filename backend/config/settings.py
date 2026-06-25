@@ -129,8 +129,10 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
+GEOCODER_PROVIDER = os.getenv("GEOCODER_PROVIDER", "photon").lower()
 GEOCODER_USER_AGENT = os.getenv("GEOCODER_USER_AGENT", "eld-trip-planner/1.0")
 GEOCODER_COUNTRY_CODES = os.getenv("GEOCODER_COUNTRY_CODES", "us")
 OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "https://router.project-osrm.org")
 NOMINATIM_BASE_URL = os.getenv("NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org")
+PHOTON_BASE_URL = os.getenv("PHOTON_BASE_URL", "https://photon.komoot.io")
 ROUTE_ENDPOINT_TOLERANCE_MILES = float(os.getenv("ROUTE_ENDPOINT_TOLERANCE_MILES", "25"))
