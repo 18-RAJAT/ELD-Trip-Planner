@@ -8,11 +8,11 @@ on the 70 hour / 8 day cycle.
 
 - Backend: Django, Django REST Framework
 - Frontend: React (Vite), Leaflet
-- Routing: OSRM (free), Geocoding: Nominatim (free)
+- Routing: OSRM (free), Geocoding: Photon (default) or Nominatim (free)
 
 ## Features
 
-- Location autocomplete backed by Nominatim so trips use confirmed coordinates
+- Location autocomplete backed by the geocoder so trips use confirmed coordinates
 - Hours of Service engine: 11 hour driving limit, 14 hour window, 30 minute break,
   70 hour / 8 day cycle, 34 hour restart, fueling every 1,000 miles, 1 hour pickup and dropoff
 - Interactive map with route line and color coded stop markers
@@ -66,6 +66,20 @@ The app runs at http://localhost:5173 and talks to the API at http://localhost:8
 2. Add an environment variable `VITE_API_URL` set to your Render API URL,
    for example `https://eld-trip-planner-api.onrender.com/api`.
 3. Deploy.
+
+## Hosted demo notes
+
+The backend runs on Render's free tier, which spins the service down after about 15
+minutes of inactivity. The first request after idle wakes the server and can take 30 to
+60 seconds, so the location suggestions may take a moment to appear on first use. After
+the server is awake, search and trip planning respond quickly.
+
+To warm the backend up before using the app, open the search endpoint once and wait for
+the JSON response:
+
+```
+https://eld-trip-planner-api-m5s2.onrender.com/api/locations/search/?q=dallas
+```
 
 ## Assumptions
 
